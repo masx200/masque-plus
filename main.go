@@ -173,8 +173,8 @@ func main() {
 				}
 
 				st := &procState{}
-				go handleScanner(bufio.NewScanner(stdout), bindIP+":"+bindPort, st, cmd, *scanVerboseChild, *scanTunnelFailLimit)
-				go handleScanner(bufio.NewScanner(stderr), bindIP+":"+bindPort, st, cmd, *scanVerboseChild, *scanTunnelFailLimit)
+				go handleScanner(bufio.NewScanner(stdout), bindIP+":"+bindPort, st, cmd, *scanVerboseChild, *scanTunnelFailLimit, true)
+				go handleScanner(bufio.NewScanner(stderr), bindIP+":"+bindPort, st, cmd, *scanVerboseChild, *scanTunnelFailLimit, true)
 
 				deadline := time.Now().Add(*scanPerIP)
 				for time.Now().Before(deadline) {
@@ -659,8 +659,8 @@ func runSocks(path, config, bindIP, bindPort string, connectTimeout time.Duratio
 	}
 
 	state := &procState{}
-	go handleScanner(bufio.NewScanner(stdout), bindIP+":"+bindPort, state, cmd, true, 3)
-	go handleScanner(bufio.NewScanner(stderr), bindIP+":"+bindPort, state, cmd, true, 3)
+	go handleScanner(bufio.NewScanner(stdout), bindIP+":"+bindPort, state, cmd, true, 3, false)
+	go handleScanner(bufio.NewScanner(stderr), bindIP+":"+bindPort, state, cmd, true, 3, false)
 
 	waitCh := make(chan error, 1)
 	go func() { waitCh <- cmd.Wait() }()
@@ -701,7 +701,7 @@ func runSocks(path, config, bindIP, bindPort string, connectTimeout time.Duratio
 	}
 }
 
-func handleScanner(scan *bufio.Scanner, bind string, st *procState, cmd *exec.Cmd, logChild bool, tunnelFailLimit int) {
+func handleScanner(scan *bufio.Scanner, bind string, st *procState, cmd *exec.Cmd, logChild bool, tunnelFailLimit int, scanning bool) {
 	if tunnelFailLimit <= 0 {
 		tunnelFailLimit = 1
 	}
@@ -760,7 +760,7 @@ func handleScanner(scan *bufio.Scanner, bind string, st *procState, cmd *exec.Cm
 		case strings.Contains(lower, "login failed!"):
 			_ = cmd.Process.Kill()
 
-		case strings.Contains(lower, "failed to connect tunnel"):
+		case scanning && strings.Contains(lower, "failed to connect tunnel"):
 			st.tunnelFailCnt++
 			if st.tunnelFailCnt >= tunnelFailLimit {
 				_ = cmd.Process.Kill()
