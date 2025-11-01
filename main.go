@@ -687,7 +687,8 @@ func runSocks(path, config, bindIP, bindPort string, connectTimeout time.Duratio
 			state.mu.Unlock()
 
 			if connected {
-				select {}
+				err := <-waitCh
+				return err
 			}
 
 			if time.Since(start) > connectTimeout {
